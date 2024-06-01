@@ -1,0 +1,338 @@
+https://github.com/rivan16/sshansible
+https://github.com/rivancorp/vrf_vpn_rt_mpls
+
+
+
+
+config t
+ ip vrf clientEW
+   rd 666:1
+   route-target 64666:4
+ ip vrf clientMB
+   rd 666:2
+   route-target 64666:5
+   
+   
+   
+config t
+ ip vrf clientEW
+   rd 666:1
+   route-target 64666:4
+ ip vrf clientMB
+   rd 666:2
+   route-target 64666:5
+
+
+
+===============================================
+
+conf t
+
+
+
+router eigrp 88
+
+
+
+access-list 2 permit host 52.52.52.52
+access-list 2 permit host 51.51.51.51
+access-list 3 permit host 54.54.54.54
+access-list 3 permit host 53.53.53.53
+
+route-map ISP2for12 permit 10
+match ip address 2
+set weight 150
+exit
+route-map ISP3for34 permit 20
+match ip address 3
+set weight 160
+exit 
+route-map ISP3forOther permit 30
+exit 
+
+router bgp 1
+ no neighbor 207.7.7.2 route-map ISP2for12 in
+ no neighbor 209.9.9.3 route-map ISP3for34 in
+end
+clear ip bgp * soft
+
+
+access-list 23 permit host 22.22.22.22
+access-list 23 permit host 33.33.33.33
+
+route-map ISP1 permit 10
+match ip address 23
+set weight 2233
+exit
+route-map ISPOther permit 20
+exit
+
+router bgp 1
+no neighbor 208.8.8.4 route-map ISP1
+
+
+access-list 41 permit host 41.41.41.41
+access-list 42 permit host 42.42.42.42
+access-list 43 permit host 43.43.43.43
+access-list 45 permit host 45.45.45.45
+
+route-map ISP4 permit 10
+match ip address 41
+set local-pref 411
+exit
+route-map ISP4 permit 20
+match ip address 42
+set local-pref 422
+exit
+route-map ISP4 permit 30
+match ip address 43
+set local-pref 433
+exit
+route-map ISP4 permit 40
+exit
+
+router bgp 45
+neighbor 45.4.5.5 route-map ISP4 out
+
+
+access-list 51 permit host 51.51.51.51
+access-list 52 permit host 52.52.52.52
+access-list 34 permit host 53.53.53.53
+access-list 34 permit host 54.54.54.54
+
+route-map ISP1 permit 10 
+match ip address 51
+set local-pref 51
+exit
+route-map ISP1 permit 20
+match ip address 52
+set local-pref 52
+exit
+route-map ISP1 deny 30
+match ip address 34
+exit
+route-map ISP1 permit 40
+exit
+
+router bgp 45
+neighbor 45.4.5.4 route-map ISP1 out
+exit
+do clear bgp ipv4 unicast 45.4.5.4 soft out
+
+
+config t
+		route-map ASPATH3 permit 10
+			set as-path prepend 3 3 3
+			exit
+		router bgp 3
+			neighbor 209.9.9.1 route-map ASPATH3 OUT
+			do clear ip bgp * soft
+			end
+
+
+config t
+		route-map ASPATH2 permit 10
+			set as-path prepend 2 2 2 2 2 2 2 2 2
+			exit
+		router bgp 2
+			neighbor 207.7.7.1 route-map ASPATH2 OUT
+			do clear ip bgp * soft
+			end
+
+
+
+conf t
+		access-list 42 permit host 42.42.42.42
+		access-list 44 permit host 44.44.44.44
+		route-map ASPATH5 permit 10
+			match ip address 42 44
+			set as-path prepend 45 45 45 45 45 45 45
+		route-map ASPATH1 permit 20
+		exit
+		router bgp 45
+			neighbor 208.8.8.1 route-map ASPATH5 out
+			do clear ip bgp * soft
+			end
+
+
+config t
+		access-list 22 permit host 22.22.22.22
+		route-map MEDnotISP1 permit 10
+			match ip address 22
+			set metric 222
+			!set as-path prepend 2 2 2 2
+		route-map MEDnotISP1 permit 20
+		router bgp 2
+			neigh 207.7.7.1 route-map MEDnotISP1 out
+			do clear ip bgp * soft
+			end
+
+==============================
+
+TASK4: dual/triple telc config: and NETFLOW
+@CUCM
+
+conf t 
+default interface FastEthernet0/0
+vlan 10
+vlan 50
+vlan 100
+exit
+int vlan 1
+no shut
+ip add 10.11.1.1 255.255.255.0
+exit
+int vlan 10
+no shut
+ip add 10.11.10.1 255.255.255.0
+exit
+int vlan 50
+no shut
+ip add 10.11.50.1 255.255.255.0
+exit
+int vlan 100
+no shut
+ip add 10.11.100.1 255.255.255.0
+end
+
+STEP2: connect/configure DITO and PLDT
+conf t 
+int fa0/2/0
+desc PLDTBLUEWire
+ip add 200.0.0.11 255.255.255.0
+no shut
+exit
+int fa0/2/1
+desc DITOBlackWirePrimary
+ip add 201.0.0.11 255.255.255.0
+no shut
+exit
+
+STEP3: CCNP need to know how to create FLOATING static routes.
+conf t
+ip route 0.0.0.0 0.0.0.0 201.0.0.1 1
+ip route 0.0.0.0 0.0.0.0 200.0.0.1 2
+
+Step4: DHCP for IPPhones
+conf t 
+ip dhcp excluded-add 10.11.100.1 10.11.100.150
+ip dhcp pool vlan 100
+network 10.11.100.0 255.255.255.0
+default-router 10.11.100.1
+option 150 ip 10.11.100.1
+Int range fa0/1/2-3
+switchport mode access
+switchport access vlan 100
+end
+
+Step5: Basic Telephony basic configs
+conf t 
+
+
+
+Different file
+
+Step5
+conf t 
+router eigrp 100
+no auto-summary
+network 200.0.0.0
+network 10.0.0.0
+exit
+int vlan 50
+ip add 10.11.50.3 255.255.255.0
+exit
+int range fa0/1/0-1
+swi mo access 
+switch access vlan 50
+end
+
+
+NETFLOW real world demo:===========================
+
+CUCM:
+conf t 
+int fa0/0
+ip nbar protocol-discovery 
+end
+
+
+Conf t
+ip flow-export  source fa 0/1/7
+ip flow-export version 5
+ip flow-export destination 10.11.1.10 2055
+int fa0/1/7
+snmp-server community public
+end
+
+conf t
+ip domain-name rivanit.com
+username admin privilege 15 secret pass
+ip ssh version 2
+cryto key generate rsa
+---> 2048
+
+lin vty 0 15
+login local 
+transport input telnet ssh
+end
+
+
+
+
+
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+config t
+no router bgp 1
+!
+ip sla auto discovery
+!
+no ip sla 1
+ip sla 1
+ !icmp-echo 208.8.8.4 source-interface e1/1
+ icmp-echo 8.8.8.8 source-interface e1/1
+ threshold 3000
+ timeout 3000
+ frequency 3
+ip sla schedule 1 life forever start-time now
+
+track 10 ip sla 1 reachability
+ delay down 1 up 1
+
+config t
+no router bgp 1
+!
+ip sla auto discovery
+!
+no ip sla 1
+ip sla 2
+ !icmp-echo 207.7.72 source-interface e1/2
+ icmp-echo 8.8.8.8 source-interface e1/2
+ threshold 3000
+ timeout 3000
+ frequency 3
+ip sla schedule 1 life forever start-time now
+
+track 20 ip sla 2 reachability
+ delay down 1 up 1
+
+ip sla 3
+ !icmp-echo 209.9.9.3 source-interface e1/3
+ icmp-echo 8.8.8.8 source-interface e1/3
+ threshold 3000
+ timeout 3000
+ frequency 3
+ip sla schedule 1 life forever start-time now
+
+track 30 ip sla 3 reachability
+ delay down 1 up 1
+
+ip route 0.0.0.0 0.0.0.0 208.8.8.4 10 track 10
+ip route 0.0.0.0 0.0.0.0 207.7.7.2 20 track 20
+ip route 0.0.0.0 0.0.0.0 209.9.9.3 30 track 30
+
+
+
